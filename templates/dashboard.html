@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Perak Flight Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        h1 {
+            text-align: center;
+            padding: 20px;
+        }
+
+        h3, h4 {
+            margin-top: 0;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        /* Grid layout for charts */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.4);
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 300px !important;
+        }
+
+        #map {
+            height: 350px;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background-color: #1e1e1e;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+        }
+
+        tr:nth-child(even) {
+            background-color: #2a2a2a;
+        }
+
+        .summary-box {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+        }
+
+        .summary-item {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 30%;
+        }
+
+        .summary-item h2 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .summary-item p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+    </style>
+</head>
+<body>
+
+<body>
+
+<h1>Perak Flight Analytics Dashboard</h1>
+
+<div class="container">
+
+    <!-- SUMMARY -->
+    <div class="summary-box">
+        <div class="summary-item">
+            <h2 id="total"></h2>
+            <p>Total Flights</p>
+        </div>
+        <div class="summary-item">
+            <h2 id="altitude"></h2>
+            <p>Average Altitude</p>
+        </div>
+        <div class="summary-item">
+            <h2 id="velocity"></h2>
+            <p>Average Velocity</p>
+        </div>
+    </div>
+
+    <!-- CHART GRID -->
+    <div class="grid">
+
+        <div class="card">
+            <h3>Flights Per Hour</h3>
+            <canvas id="hourChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Flights Per Day</h3>
+            <canvas id="dayChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Top Origin Countries</h3>
+            <canvas id="countryChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Altitude Distribution</h3>
+            <canvas id="altitudeChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Velocity Distribution</h3>
+            <canvas id="velocityChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Aircraft Map</h3>
+            <div id="map"></div>
+        </div>
+
+        <div class="card">
+            <h3>Departure Airports</h3>
+            <canvas id="departureChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Departure Airport Table</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Airport</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody id="departureTable"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+
+
+</body>
+
+<script>
+
+function loadFlightsPerDay() {
+    fetch("/api/flights_per_day")
+    .then(res => res.json())
+    .then(data => {
+        new Chart(document.getElementById("dayChart"), {
+            type: "line",
+            data: {
+                labels: data.days,
+                datasets: [{
+                    label: "Flights per Day",
+                    data: data.counts
+                }]
+            }
+        });
+    });
+}
+
+loadFlightsPerDay();
+
+function loadTopCountries() {
+    fetch("/api/top_countries")
+    .then(res => res.json())
+    .then(data => {
+        new Chart(document.getElementById("countryChart"), {
+            type: "bar",
+            data: {
+                labels: data.countries,
+                datasets: [{
+                    label: "Flights by Country",
+                    data: data.counts
+                }]
+            }
+        });
+    });
+}
+
+loadTopCountries();
+
+
+function loadAltitudeDistribution() {
+    fetch("/api/altitude_distribution")
+    .then(res => res.json())
+    .then(data => {
+        new Chart(document.getElementById("altitudeChart"), {
+            type: "bar",
+            data: {
+                labels: data.ranges,
+                datasets: [{
+                    label: "Altitude Distribution",
+                    data: data.counts
+                }]
+            }
+        });
+    });
+}
+
+loadAltitudeDistribution();
+
+function loadVelocityDistribution() {
+    fetch("/api/velocity_distribution")
+    .then(res => res.json())
+    .then(data => {
+        new Chart(document.getElementById("velocityChart"), {
+            type: "bar",
+            data: {
+                labels: data.ranges,
+                datasets: [{
+                    label: "Velocity Distribution",
+                    data: data.counts
+                }]
+            }
+        });
+    });
+}
+
+loadVelocityDistribution();
+
+
+function loadSummary() {
+    fetch("/api/summary")
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("total").innerText = data.total_flights;
+        document.getElementById("altitude").innerText = data.average_altitude;
+        document.getElementById("velocity").innerText = data.average_velocity;
+    });
+}
+
+loadSummary();
+
+function loadFlightsPerHour() {
+    fetch("/api/flights_per_hour")
+    .then(res => res.json())
+    .then(data => {
+        const ctx = document.getElementById("hourChart").getContext("2d");
+
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: data.hours,
+                datasets: [{
+                    label: "Flights per Hour",
+                    data: data.counts
+                }]
+            }
+        });
+    });
+}
+
+loadFlightsPerHour();
+
+const map = L.map('map').setView([4.5, 101.0], 8);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+
+
+function loadMapData() {
+    fetch("/api/map_data")
+    .then(res => res.json())
+    .then(data => {
+        data.forEach(point => {
+            L.circleMarker([point.latitude, point.longitude], {
+                radius: 3
+            }).addTo(map);
+        });
+    });
+}
+
+loadMapData();
+
+function loadDepartureSummary() {
+    fetch("/api/real_departure_summary")
+    .then(res => res.json())
+    .then(data => {
+
+        const airports = data.map(item => item.airport);
+        const counts = data.map(item => item.count);
+
+        // Bar chart
+        new Chart(document.getElementById("departureChart"), {
+            type: "bar",
+            data: {
+                labels: airports,
+                datasets: [{
+                    label: "Flights by Departure Airport",
+                    data: counts
+                }]
+            }
+        });
+
+        // Table
+        const tableBody = document.getElementById("departureTable");
+        tableBody.innerHTML = "";
+
+        data.forEach(item => {
+            const row = `<tr>
+                            <td>${item.airport}</td>
+                            <td>${item.count}</td>
+                         </tr>`;
+            tableBody.innerHTML += row;
+        });
+
+    });
+}
+
+loadDepartureSummary();
+
+setInterval(() => {
+    loadSummary();
+    loadFlightsPerHour();
+    loadFlightsPerDay();
+    loadTopCountries();
+    loadAltitudeDistribution();
+    loadVelocityDistribution();
+    loadMapData();
+    loadDepartureSummary();
+}, 60000);  // refresh every 60 seconds
+
+
+
+
+</script>
+
+</body>
+</html>
