@@ -16,7 +16,7 @@ url_data = (
     f"lamin={lat_min}&lomin={lon_min}&lamax={lat_max}&lomax={lon_max}"
 )
 
-FLASK_URL = "http://127.0.0.1:5000/api/ingest"
+FLASK_URL = "https://iot-jan-26.onrender.com/api/ingest"
 
 print("Local Flight Data Collection Started...\n")
 

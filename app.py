@@ -1,6 +1,7 @@
 from flask import Flask,jsonify
 import sqlite3
 import pandas as pd
+from flask import request
 
 import requests
 import time
@@ -329,6 +330,51 @@ def real_departure_summary():
         {"airport": row[0], "count": row[1]}
         for row in data
     ])
+
+
+@app.route("/api/ingest", methods=["POST"])
+def ingest():
+
+    data = request.json
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS flights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            icao24 TEXT,
+            flight_number TEXT,
+            origin_country TEXT,
+            latitude REAL,
+            longitude REAL,
+            baro_altitude REAL,
+            velocity REAL
+        )
+    """)
+
+    cursor.execute("""
+        INSERT INTO flights (
+            timestamp, icao24, flight_number,
+            origin_country, latitude, longitude,
+            baro_altitude, velocity
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        data["timestamp"],
+        data["icao24"],
+        data["flight_number"],
+        data["origin_country"],
+        data["latitude"],
+        data["longitude"],
+        data["baro_altitude"],
+        data["velocity"]
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "success"}, 200
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(fetch_real_departures_job, 'interval', minutes=5)
