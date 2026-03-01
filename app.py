@@ -7,9 +7,7 @@ import time
 import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
-scheduler = BackgroundScheduler()
-scheduler.add_job(fetch_real_departures_job, 'interval', minutes=5)
-scheduler.start()
+
 
 app = Flask(__name__)
 
@@ -332,7 +330,9 @@ def real_departure_summary():
         for row in data
     ])
 
-
+scheduler = BackgroundScheduler()
+scheduler.add_job(fetch_real_departures_job, 'interval', minutes=5)
+scheduler.start()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
