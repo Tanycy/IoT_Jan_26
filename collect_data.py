@@ -1,38 +1,68 @@
 import requests
 import pandas as pd
+import sqlite3
 import time
 from datetime import datetime
 
 # =========================
-# PERAK AREA COORDINATES
+# 1. PERAK AREA COORDINATES
 # =========================
 lat_min = 3.5
 lat_max = 5.8
 lon_min = 100.3
 lon_max = 101.5
 
+
+# =========================
+# 2. OPENSKY API (ADD YOUR LOGIN IF YOU HAVE)
+# =========================
+user_name = ""      # optional
+password = ""       # optional
+
 url_data = (
     "https://opensky-network.org/api/states/all?"
     f"lamin={lat_min}&lomin={lon_min}&lamax={lat_max}&lomax={lon_max}"
 )
 
-FLASK_URL = "https://iot-jan-26.onrender.com/api/ingest"
+# =========================
+# 3. SQLITE DATABASE SETUP
+# =========================
+conn = sqlite3.connect("perak_flights.db")
+cursor = conn.cursor()
 
-print("Local Flight Data Collection Started...\n")
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS flights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT,
+    icao24 TEXT,
+    flight_number TEXT,
+    origin_country TEXT,
+    latitude REAL,
+    longitude REAL,
+    baro_altitude REAL,
+    velocity REAL
+)
+""")
+conn.commit()
+
+# =========================
+# 4. DATA COLLECTION LOOP
+# =========================
+print("Flight data collection started...")
 
 while True:
     try:
         r = requests.get(url_data, timeout=30)
-        print("OpenSky Status:", r.status_code)
+
+        print("Status code:", r.status_code)
+
 
         response = r.json()
 
-        if response.get("states") is None:
-            print("⚠ No data from OpenSky")
+        if response["states"] is None:
+            print("No data received")
             time.sleep(300)
             continue
-
-        print("Flights received:", len(response["states"]))
 
         col_name = [
             'icao24','flight_number','origin_country','time_position',
@@ -43,43 +73,28 @@ while True:
 
         flight_df = pd.DataFrame(response["states"], columns=col_name)
 
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.width", 120)
+
+        print("\n=== Sample Flight Data (Table View) ===")
+        print(flight_df.head(10))
+
+        # Keep only useful columns
         flight_df = flight_df[[
             'icao24','flight_number','origin_country',
             'latitude','longitude','baro_altitude','velocity'
         ]]
 
         flight_df["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         flight_df = flight_df.dropna(subset=["latitude", "longitude"])
 
-        if flight_df.empty:
-            print("⚠ No valid coordinates found")
-            time.sleep(300)
-            continue
+        # Insert into SQLite
+        flight_df.to_sql("flights", conn, if_exists="append", index=False)
 
-        print(f" Sending {len(flight_df)} records...")
-
-        for _, row in flight_df.iterrows():
-
-            payload = {
-                "timestamp": row["timestamp"],
-                "icao24": row["icao24"],
-                "flight_number": row["flight_number"],
-                "origin_country": row["origin_country"],
-                "latitude": float(row["latitude"]),
-                "longitude": float(row["longitude"]),
-                "baro_altitude": float(row["baro_altitude"]) if pd.notna(row["baro_altitude"]) else None,
-                "velocity": float(row["velocity"]) if pd.notna(row["velocity"]) else None
-            }
-
-            try:
-                res = requests.post(FLASK_URL, json=payload, timeout=5)
-                print("POST:", res.status_code)
-            except Exception as e:
-                print("POST Error:", e)
+        print(f"Saved {len(flight_df)} records at {datetime.now()}")
 
     except Exception as e:
-        print("OpenSky Error:", e)
+        print("Error:", e)
 
-    print(" Waiting ...\n")
+    # Wait 5 minutes
     time.sleep(300)
