@@ -1,376 +1,224 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Perak Flight Dashboard</title>
-
+    <meta charset="UTF-8">
+    <title>Perak Flight Analytics - Historical RPi Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
     <style>
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { 
+            height: 100vh; width: 100vw; 
+            overflow: hidden; 
+            background: #0b1020; 
+            font-family: "Inter", sans-serif;
+            color: white;
         }
 
-        h1 {
-            text-align: center;
-            padding: 20px;
-        }
-
-        h3, h4 {
-            margin-top: 0;
-        }
-
-        .container {
-            padding: 20px;
-        }
-
-        /* Grid layout for charts */
-        .grid {
+        .dashboard-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
+            grid-template-columns: 2.2fr 1fr;
+            height: 100vh;
+            padding: 10px;
+            gap: 10px;
         }
+
+        .left-side {
+            display: grid;
+            grid-template-rows: 1fr 1.2fr; 
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .bottom-row-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .sidebar {
+            display: grid;
+            grid-template-rows: 10vh 1.5fr 1fr 1.2fr; 
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .dist-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 
         .card {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.4);
-        }
-
-        canvas {
-            width: 100% !important;
-            height: 300px !important;
-        }
-
-        #map {
-            height: 350px;
-            border-radius: 10px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            background-color: #1e1e1e;
-        }
-
-        th, td {
+            background: #121a3a;
+            border: 1px solid #1c254f;
+            border-radius: 6px;
             padding: 10px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #333;
-        }
-
-        tr:nth-child(even) {
-            background-color: #2a2a2a;
-        }
-
-        .summary-box {
             display: flex;
-            justify-content: space-around;
-            margin-bottom: 30px;
+            flex-direction: column;
+            min-height: 0;
         }
 
-        .summary-item {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 10px;
+        .card h3 {
+            font-size: 0.75rem;
+            color: #00f2ff;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            border-left: 3px solid #00f2ff;
+            padding-left: 8px;
+        }
+
+        .kpi-card {
+            background: #121a3a;
+            border: 1px solid #1c254f;
             text-align: center;
-            width: 30%;
+            display: flex; flex-direction: column; justify-content: center;
         }
+        .kpi-card h2 { font-size: 1.2vw; color: #4fc3f7; }
+        .kpi-card p { font-size: 0.6rem; color: #b0bec5; }
 
-        .summary-item h2 {
-            margin: 0;
-            font-size: 28px;
-        }
+        .chart-box { flex: 1; position: relative; width: 100%; min-height: 0; }
+        #map { height: 100%; width: 100%; border-radius: 4px; background: #0b1020; }
 
-        .summary-item p {
-            margin: 5px 0 0;
-            font-size: 14px;
-            color: #aaa;
-        }
-
+        .table-wrap { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+        th { text-align: left; color: #00f2ff; padding: 6px; border-bottom: 1px solid #1c254f; position: sticky; top: 0; background: #121a3a; }
+        td { padding: 6px; border-bottom: 1px solid #1c254f; color: #e0e0e0; }
     </style>
 </head>
 <body>
 
-<body>
-
-<h1>Perak Flight Analytics Dashboard</h1>
-
-<div class="container">
-
-    <!-- SUMMARY -->
-    <div class="summary-box">
-        <div class="summary-item">
-            <h2 id="total"></h2>
-            <p>Total Flights</p>
+<div class="dashboard-container">
+    <div class="left-side">
+        <div class="card">
+            <h3>Flights / Hour </h3>
+            <div class="chart-box"><canvas id="hourChart"></canvas></div>
         </div>
-        <div class="summary-item">
-            <h2 id="altitude"></h2>
-            <p>Average Altitude</p>
-        </div>
-        <div class="summary-item">
-            <h2 id="velocity"></h2>
-            <p>Average Velocity</p>
+        <div class="bottom-row-split">
+            <div class="card">
+                <h3>Recorded Flight Paths (Perak)</h3>
+                <div id="map"></div>
+            </div>
+            <div class="card">
+                <h3>Top Origin Distribution</h3>
+                <div class="chart-box"><canvas id="countryChart"></canvas></div>
+            </div>
         </div>
     </div>
 
-    <!-- CHART GRID -->
-    <div class="grid">
-
-        <div class="card">
-            <h3>Flights Per Hour</h3>
-            <canvas id="hourChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>Flights Per Day</h3>
-            <canvas id="dayChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>Top Origin Countries</h3>
-            <canvas id="countryChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>Altitude Distribution</h3>
-            <canvas id="altitudeChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>Velocity Distribution</h3>
-            <canvas id="velocityChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>Aircraft Map</h3>
-            <div id="map"></div>
+    <div class="sidebar">
+        <div class="kpi-row" id="kpiContainer">
+            <div class="kpi-card"><h2 id="totalVal">--</h2><p>Total Recorded</p></div>
+            <div class="kpi-card"><h2 id="altVal">--</h2><p>Avg Alt (m)</p></div>
+            <div class="kpi-card"><h2 id="velVal">--</h2><p>Avg Vel (m/s)</p></div>
         </div>
 
         <div class="card">
             <h3>Departure Airports</h3>
-            <canvas id="departureChart"></canvas>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Country</th><th>Count</th></tr></thead>
+                    <tbody id="airportTable"></tbody>
+                </table>
+            </div>
         </div>
 
         <div class="card">
-            <h3>Departure Airport Table</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Airport</th>
-                        <th>Count</th>
-                    </tr>
-                </thead>
-                <tbody id="departureTable"></tbody>
-            </table>
+            <h3>Flights / Day</h3>
+            <div class="chart-box"><canvas id="dayChart"></canvas></div>
         </div>
 
+        <div class="dist-row">
+            <div class="card">
+                <h3>Alt Dist.</h3>
+                <div class="chart-box"><canvas id="altChart"></canvas></div>
+            </div>
+            <div class="card">
+                <h3>Vel Dist.</h3>
+                <div class="chart-box"><canvas id="velChart"></canvas></div>
+            </div>
+        </div>
     </div>
-
 </div>
 
-
-
-</body>
-
 <script>
+    Chart.defaults.color = "#ffffff";
+    const baseOpts = { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } };
 
-function loadFlightsPerDay() {
-    fetch("/api/flights_per_day")
-    .then(res => res.json())
-    .then(data => {
-        new Chart(document.getElementById("dayChart"), {
-            type: "line",
-            data: {
-                labels: data.days,
-                datasets: [{
-                    label: "Flights per Day",
-                    data: data.counts
-                }]
-            }
-        });
-    });
-}
+    // 1. Setup Map
+    const map = L.map("map").setView([4.5, 101.0], 8);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-loadFlightsPerDay();
-
-function loadTopCountries() {
-    fetch("/api/top_countries")
-    .then(res => res.json())
-    .then(data => {
-        new Chart(document.getElementById("countryChart"), {
-            type: "bar",
-            data: {
-                labels: data.countries,
-                datasets: [{
-                    label: "Flights by Country",
-                    data: data.counts
-                }]
-            }
-        });
-    });
-}
-
-loadTopCountries();
-
-
-function loadAltitudeDistribution() {
-    fetch("/api/altitude_distribution")
-    .then(res => res.json())
-    .then(data => {
-        new Chart(document.getElementById("altitudeChart"), {
-            type: "bar",
-            data: {
-                labels: data.ranges,
-                datasets: [{
-                    label: "Altitude Distribution",
-                    data: data.counts
-                }]
-            }
-        });
-    });
-}
-
-loadAltitudeDistribution();
-
-function loadVelocityDistribution() {
-    fetch("/api/velocity_distribution")
-    .then(res => res.json())
-    .then(data => {
-        new Chart(document.getElementById("velocityChart"), {
-            type: "bar",
-            data: {
-                labels: data.ranges,
-                datasets: [{
-                    label: "Velocity Distribution",
-                    data: data.counts
-                }]
-            }
-        });
-    });
-}
-
-loadVelocityDistribution();
-
-
-function loadSummary() {
-    fetch("/api/summary")
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("total").innerText = data.total_flights;
-        document.getElementById("altitude").innerText = data.average_altitude;
-        document.getElementById("velocity").innerText = data.average_velocity;
-    });
-}
-
-loadSummary();
-
-function loadFlightsPerHour() {
-    fetch("/api/flights_per_hour")
-    .then(res => res.json())
-    .then(data => {
-        const ctx = document.getElementById("hourChart").getContext("2d");
-
-        new Chart(ctx, {
-            type: "line",
-            data: {
-                labels: data.hours,
-                datasets: [{
-                    label: "Flights per Hour",
-                    data: data.counts
-                }]
-            }
-        });
-    });
-}
-
-loadFlightsPerHour();
-
-const map = L.map('map').setView([4.5, 101.0], 8);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
-
-
-
-function loadMapData() {
-    fetch("/api/map_data")
-    .then(res => res.json())
-    .then(data => {
-        data.forEach(point => {
-            L.circleMarker([point.latitude, point.longitude], {
-                radius: 3
+    async function loadMapSpots() {
+        const res = await fetch('/api/map_data');
+        const points = await res.json();
+        points.forEach(p => {
+            L.circleMarker([p.latitude, p.longitude], {
+                radius: 2, color: '#00f2ff', fillOpacity: 0.4, stroke: false
             }).addTo(map);
         });
-    });
-}
+        if(points.length > 0) map.panTo([points[0].latitude, points[0].longitude]);
+    }
 
-loadMapData();
+    // 2. Fetch KPI Summary
+    async function loadSummary() {
+        const res = await fetch('/api/summary');
+        const data = await res.json();
+        document.getElementById('totalVal').innerText = data.total_flights;
+        document.getElementById('altVal').innerText = data.average_altitude;
+        document.getElementById('velVal').innerText = data.average_velocity;
+    }
 
-function loadDepartureSummary() {
-    fetch("/api/real_departure_summary")
-    .then(res => res.json())
-    .then(data => {
-
-        const airports = data.map(item => item.airport);
-        const counts = data.map(item => item.count);
-
-        // Bar chart
-        new Chart(document.getElementById("departureChart"), {
-            type: "bar",
-            data: {
-                labels: airports,
-                datasets: [{
-                    label: "Flights by Departure Airport",
-                    data: counts
-                }]
-            }
+    // 3. Load Charts
+    async function loadCharts() {
+        // Hourly Chart
+        const hourRes = await fetch('/api/flights_per_hour');
+        const hourData = await hourRes.json();
+        new Chart(document.getElementById('hourChart'), {
+            type: 'line',
+            data: { labels: hourData.hours, datasets: [{ data: hourData.counts, borderColor: '#00f2ff', fill: true, backgroundColor: 'rgba(0,242,255,0.1)', tension: 0.4 }] },
+            options: baseOpts
         });
 
-        // Table
-        const tableBody = document.getElementById("departureTable");
-        tableBody.innerHTML = "";
+        // Country Distribution & Table
+        const countryRes = await fetch('/api/top_countries');
+        const countryData = await countryRes.json();
+        
+        // Table content
+        document.getElementById('airportTable').innerHTML = countryData.countries.map((c, i) => 
+            `<tr><td>${c}</td><td>${countryData.counts[i]}</td></tr>`).join('');
 
-        data.forEach(item => {
-            const row = `<tr>
-                            <td>${item.airport}</td>
-                            <td>${item.count}</td>
-                         </tr>`;
-            tableBody.innerHTML += row;
+        // Donut Chart
+        new Chart(document.getElementById('countryChart'), {
+            type: 'doughnut',
+            data: { labels: countryData.countries.slice(0,5), datasets: [{ data: countryData.counts.slice(0,5), backgroundColor: ['#9575cd', '#4fc3f7', '#81c784', '#ffb74d', '#e57373'], borderWidth: 0 }] },
+            options: { ...baseOpts, plugins: { legend: { display: true, position: 'bottom' } } }
         });
 
-    });
-}
+        // Day Chart
+        const dayRes = await fetch('/api/flights_per_day');
+        const dayData = await dayRes.json();
+        new Chart(document.getElementById('dayChart'), {
+            type: 'line',
+            data: { labels: dayData.days, datasets: [{ data: dayData.counts, borderColor: '#81c784', tension: 0.3 }] },
+            options: baseOpts
+        });
 
-loadDepartureSummary();
+        // Distributions (Alt/Vel)
+        const altRes = await fetch('/api/altitude_distribution');
+        const altData = await altRes.json();
+        new Chart(document.getElementById('altChart'), { type: 'bar', data: { labels: altData.ranges, datasets: [{ data: altData.counts, backgroundColor: '#4db6ac' }] }, options: baseOpts });
 
-setInterval(() => {
-    loadSummary();
-    loadFlightsPerHour();
-    loadFlightsPerDay();
-    loadTopCountries();
-    loadAltitudeDistribution();
-    loadVelocityDistribution();
-    loadMapData();
-    loadDepartureSummary();
-}, 60000);  // refresh every 60 seconds
+        const velRes = await fetch('/api/velocity_distribution');
+        const velData = await velRes.json();
+        new Chart(document.getElementById('velChart'), { type: 'bar', data: { labels: velData.ranges, datasets: [{ data: velData.counts, backgroundColor: '#f06292' }] }, options: baseOpts });
+    }
 
-
-
-
+    window.onload = () => {
+        loadSummary();
+        loadMapSpots();
+        loadCharts();
+        setTimeout(() => map.invalidateSize(), 500);
+    };
 </script>
-
 </body>
 </html>

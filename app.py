@@ -4,8 +4,12 @@ import pandas as pd
 
 import requests
 import time
+import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(fetch_real_departures_job, 'interval', minutes=5)
+scheduler.start()
 
 app = Flask(__name__)
 
@@ -99,18 +103,19 @@ def home():
 
 @app.route("/api/flights_per_hour")
 def flights_per_hour():
+    
     query = """
-    SELECT strftime('%Y-%m-%d %H:00', timestamp) as hour,
+    SELECT strftime('%H:00', timestamp) as hour_only,
            COUNT(*) as count
     FROM flights
-    GROUP BY hour
-    ORDER BY hour
+    GROUP BY hour_only
+    ORDER BY hour_only
     """
 
     df = query_db(query)
 
     return jsonify({
-        "hours": df["hour"].tolist(),
+        "hours": df["hour_only"].tolist(),
         "counts": df["count"].tolist()
     })
 
@@ -312,10 +317,11 @@ def real_departure_summary():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT departure_airport, COUNT(*)
-        FROM flight_routes
-        GROUP BY departure_airport
+        SELECT origin_country, COUNT(*)
+        FROM flights
+        GROUP BY origin_country
         ORDER BY COUNT(*) DESC
+        LIMIT 10
     """)
 
     data = cursor.fetchall()
@@ -327,10 +333,7 @@ def real_departure_summary():
     ])
 
 
+
 if __name__ == "__main__":
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(fetch_real_departures_job, 'interval', minutes=5)
-    scheduler.start()
-
-    app.run(debug=True)
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
