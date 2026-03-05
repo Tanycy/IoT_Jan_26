@@ -117,7 +117,7 @@ IoT_Jan_26/
 └── README.md
 ```
 
-
+---
 ## 📊 Dashboard Features
 
 The dashboard performs descriptive analytics on recorded flight data, including:
