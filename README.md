@@ -133,23 +133,6 @@ The dashboard performs descriptive analytics on recorded flight data, including:
 
 ---
 
-# ⚠️ Development Rules
-
-Before starting work:
-
-```
-git pull
-```
-
-After making changes:
-
-```
-git add .
-git commit -m "Describe your change"
-git push
-```
-
----
 
 # 🚫 Important Notes
 
