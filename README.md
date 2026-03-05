@@ -5,20 +5,6 @@ The system retrieves flight information, stores it locally, and visualizes key a
 
 ---
 
-# 🌐 Live Demo
-
-The system has been deployed on **Render** and can be accessed online.
-
-🔗 **Live Dashboard Link:**
-
-```
-https://iot-jan-26.onrender.com
-```
-
-Users can access the dashboard directly without installing any software.
-
----
-
 # 📌 Project Overview
 
 This project demonstrates a simple **IoT-style data pipeline**:
@@ -27,6 +13,21 @@ This project demonstrates a simple **IoT-style data pipeline**:
 2. The data is stored locally using SQLite.
 3. The Flask dashboard performs analysis using Pandas.
 4. Results are visualized through charts and tables.
+
+---
+
+## 📊 Dashboard Features
+
+The dashboard performs descriptive analytics on recorded flight data, including:
+
+* **Flights per Hour Analysis** – Visualizes hourly air traffic patterns to identify peak flight periods.
+* **Flights per Day Trend** – Shows daily flight activity to observe short-term traffic trends.
+* **Total Flight Statistics** – Displays total recorded flights along with average altitude and velocity.
+* **Aircraft Registration Country Distribution** – Shows the distribution of flights based on the aircraft registration country.
+* **Flights by Departure Country** – Lists detected flights grouped by their departure country.
+* **Altitude Distribution Analysis** – Displays aircraft altitude ranges using histogram visualization.
+* **Velocity Distribution Analysis** – Shows aircraft speed distribution to analyze flight behavior.
+* **Flight Path Visualization** – Maps recorded aircraft positions over the Perak region using geographic visualization.
 
 ---
 
@@ -41,6 +42,20 @@ This project demonstrates a simple **IoT-style data pipeline**:
 * Render (Cloud Deployment)
 
 SQLite is built into Python, so no additional database installation is required.
+
+---
+
+# 🌐 Live Demo
+
+The system has been deployed on **Render** and can be accessed online.
+
+🔗 **Live Dashboard Link:**
+
+```
+https://iot-jan-26.onrender.com
+```
+
+Users can access the dashboard directly without installing any software.
 
 ---
 
@@ -118,21 +133,6 @@ IoT_Jan_26/
 ```
 
 ---
-## 📊 Dashboard Features
-
-The dashboard performs descriptive analytics on recorded flight data, including:
-
-* **Flights per Hour Analysis** – Visualizes hourly air traffic patterns to identify peak flight periods.
-* **Flights per Day Trend** – Shows daily flight activity to observe short-term traffic trends.
-* **Total Flight Statistics** – Displays total recorded flights along with average altitude and velocity.
-* **Aircraft Registration Country Distribution** – Shows the distribution of flights based on the aircraft registration country.
-* **Flights by Departure Country** – Lists detected flights grouped by their departure country.
-* **Altitude Distribution Analysis** – Displays aircraft altitude ranges using histogram visualization.
-* **Velocity Distribution Analysis** – Shows aircraft speed distribution to analyze flight behavior.
-* **Flight Path Visualization** – Maps recorded aircraft positions over the Perak region using geographic visualization.
-
----
-
 
 # 🚫 Important Notes
 
