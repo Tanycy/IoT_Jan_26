@@ -70,19 +70,45 @@
         .kpi-card {
             background: #121a3a;
             border: 1px solid #1c254f;
+            border-radius: 6px;
             text-align: center;
             display: flex; flex-direction: column; justify-content: center;
         }
         .kpi-card h2 { font-size: 1.2vw; color: #4fc3f7; }
-        .kpi-card p { font-size: 0.6rem; color: #b0bec5; }
+        .kpi-card p  { font-size: 0.6rem; color: #b0bec5; }
 
         .chart-box { flex: 1; position: relative; width: 100%; min-height: 0; }
         #map { height: 100%; width: 100%; border-radius: 4px; background: #0b1020; }
 
         .table-wrap { flex: 1; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
-        th { text-align: left; color: #00f2ff; padding: 6px; border-bottom: 1px solid #1c254f; position: sticky; top: 0; background: #121a3a; }
-        td { padding: 6px; border-bottom: 1px solid #1c254f; color: #e0e0e0; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
+        th {
+            text-align: left; color: #00f2ff; padding: 5px 6px;
+            border-bottom: 1px solid #1c254f;
+            position: sticky; top: 0; background: #121a3a;
+        }
+        td { padding: 5px 6px; border-bottom: 1px solid #1a2245; color: #e0e0e0; }
+        tr:hover td { background: #1c2a55; }
+
+        /* ICAO badge */
+        .icao-badge {
+            display: inline-block;
+            background: #0d2040;
+            color: #4fc3f7;
+            border: 1px solid #1c3a6e;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 0.6rem;
+            font-family: monospace;
+            margin-left: 4px;
+        }
+
+        /* status indicator */
+        #depStatus {
+            font-size: 0.6rem;
+            color: #607d8b;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -90,7 +116,7 @@
 <div class="dashboard-container">
     <div class="left-side">
         <div class="card">
-            <h3>Flights / Hour </h3>
+            <h3>Flights / Hour</h3>
             <div class="chart-box"><canvas id="hourChart"></canvas></div>
         </div>
         <div class="bottom-row-split">
@@ -99,7 +125,7 @@
                 <div id="map"></div>
             </div>
             <div class="card">
-                <h3>Top Origin Distribution</h3>
+                <h3>Top 5 Aircraft Registration Country Distribution</h3>
                 <div class="chart-box"><canvas id="countryChart"></canvas></div>
             </div>
         </div>
@@ -114,9 +140,15 @@
 
         <div class="card">
             <h3>Departure Airports</h3>
+            <div id="depStatus">Loading airport data…</div>
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Country</th><th>Count</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Airport</th>
+                            <th style="text-align:right;">Count</th>
+                        </tr>
+                    </thead>
                     <tbody id="airportTable"></tbody>
                 </table>
             </div>
@@ -142,81 +174,150 @@
 
 <script>
     Chart.defaults.color = "#ffffff";
-    const baseOpts = { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } };
+    const baseOpts = {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 9 } } }
+        }
+    };
 
-    // 1. Setup Map
+    // ── Map ──────────────────────────────────────────────────────────────
     const map = L.map("map").setView([4.5, 101.0], 8);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
     async function loadMapSpots() {
-        const res = await fetch('/api/map_data');
+        const res    = await fetch('/api/map_data');
         const points = await res.json();
         points.forEach(p => {
             L.circleMarker([p.latitude, p.longitude], {
                 radius: 2, color: '#00f2ff', fillOpacity: 0.4, stroke: false
             }).addTo(map);
         });
-        if(points.length > 0) map.panTo([points[0].latitude, points[0].longitude]);
+        if (points.length > 0) map.panTo([points[0].latitude, points[0].longitude]);
     }
 
-    // 2. Fetch KPI Summary
+    // ── KPI ──────────────────────────────────────────────────────────────
     async function loadSummary() {
-        const res = await fetch('/api/summary');
+        const res  = await fetch('/api/summary');
         const data = await res.json();
-        document.getElementById('totalVal').innerText = data.total_flights;
-        document.getElementById('altVal').innerText = data.average_altitude;
-        document.getElementById('velVal').innerText = data.average_velocity;
+        document.getElementById('totalVal').innerText = data.total_flights.toLocaleString();
+        document.getElementById('altVal').innerText   = data.average_altitude;
+        document.getElementById('velVal').innerText   = data.average_velocity;
     }
 
-    // 3. Load Charts
+    // ── Departure Airport Table (now uses /api/departure_airports) ────────
+    async function loadDepartureTable() {
+        try {
+            const res  = await fetch('/api/departure_airports');
+            const data = await res.json();
+
+            const status = document.getElementById('depStatus');
+            const tbody  = document.getElementById('airportTable');
+
+            if (!data || data.length === 0) {
+                status.textContent = "No route data yet — fetch routes first.";
+                tbody.innerHTML    = "";
+                return;
+            }
+
+            // Check if we got real airport names or just country fallback
+            const hasIcao = data.some(d => d.icao && d.icao !== "");
+            status.textContent = hasIcao
+                ? `Showing ${data.length} departure airports`
+                : "Showing by origin country (no route data yet)";
+
+            tbody.innerHTML = data.map(d => `
+                <tr>
+                    <td>
+                        ${d.airport || "Unknown"}
+                        ${d.icao ? `<span class="icao-badge">${d.icao}</span>` : ""}
+                    </td>
+                    <td style="text-align:right;">${d.count}</td>
+                </tr>
+            `).join('');
+
+        } catch (e) {
+            document.getElementById('depStatus').textContent = "Error loading data.";
+            console.error(e);
+        }
+    }
+
+    // ── Charts ───────────────────────────────────────────────────────────
     async function loadCharts() {
-        // Hourly Chart
-        const hourRes = await fetch('/api/flights_per_hour');
-        const hourData = await hourRes.json();
+        // Hourly
+        const hourData = await fetch('/api/flights_per_hour').then(r => r.json());
         new Chart(document.getElementById('hourChart'), {
             type: 'line',
-            data: { labels: hourData.hours, datasets: [{ data: hourData.counts, borderColor: '#00f2ff', fill: true, backgroundColor: 'rgba(0,242,255,0.1)', tension: 0.4 }] },
+            data: {
+                labels: hourData.hours,
+                datasets: [{
+                    data: hourData.counts, borderColor: '#00f2ff',
+                    fill: true, backgroundColor: 'rgba(0,242,255,0.1)', tension: 0.4
+                }]
+            },
             options: baseOpts
         });
 
-        // Country Distribution & Table
-        const countryRes = await fetch('/api/top_countries');
-        const countryData = await countryRes.json();
-        
-        // Table content
-        document.getElementById('airportTable').innerHTML = countryData.countries.map((c, i) => 
-            `<tr><td>${c}</td><td>${countryData.counts[i]}</td></tr>`).join('');
-
-        // Donut Chart
+        // Country donut + table (for the donut chart only — table now uses departure_airports)
+        const countryData = await fetch('/api/top_countries').then(r => r.json());
         new Chart(document.getElementById('countryChart'), {
             type: 'doughnut',
-            data: { labels: countryData.countries.slice(0,5), datasets: [{ data: countryData.counts.slice(0,5), backgroundColor: ['#9575cd', '#4fc3f7', '#81c784', '#ffb74d', '#e57373'], borderWidth: 0 }] },
-            options: { ...baseOpts, plugins: { legend: { display: true, position: 'bottom' } } }
+            data: {
+                labels: countryData.countries.slice(0, 5),
+                datasets: [{
+                    data: countryData.counts.slice(0, 5),
+                    backgroundColor: ['#9575cd','#4fc3f7','#81c784','#ffb74d','#e57373'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                ...baseOpts,
+                plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 9 } } } }
+            }
         });
 
-        // Day Chart
-        const dayRes = await fetch('/api/flights_per_day');
-        const dayData = await dayRes.json();
+        // Daily
+        const dayData = await fetch('/api/flights_per_day').then(r => r.json());
         new Chart(document.getElementById('dayChart'), {
             type: 'line',
-            data: { labels: dayData.days, datasets: [{ data: dayData.counts, borderColor: '#81c784', tension: 0.3 }] },
+            data: {
+                labels: dayData.days,
+                datasets: [{ data: dayData.counts, borderColor: '#81c784', tension: 0.3 }]
+            },
             options: baseOpts
         });
 
-        // Distributions (Alt/Vel)
-        const altRes = await fetch('/api/altitude_distribution');
-        const altData = await altRes.json();
-        new Chart(document.getElementById('altChart'), { type: 'bar', data: { labels: altData.ranges, datasets: [{ data: altData.counts, backgroundColor: '#4db6ac' }] }, options: baseOpts });
+        // Altitude distribution
+        const altData = await fetch('/api/altitude_distribution').then(r => r.json());
+        new Chart(document.getElementById('altChart'), {
+            type: 'bar',
+            data: {
+                labels: altData.ranges,
+                datasets: [{ data: altData.counts, backgroundColor: '#4db6ac' }]
+            },
+            options: baseOpts
+        });
 
-        const velRes = await fetch('/api/velocity_distribution');
-        const velData = await velRes.json();
-        new Chart(document.getElementById('velChart'), { type: 'bar', data: { labels: velData.ranges, datasets: [{ data: velData.counts, backgroundColor: '#f06292' }] }, options: baseOpts });
+        // Velocity distribution
+        const velData = await fetch('/api/velocity_distribution').then(r => r.json());
+        new Chart(document.getElementById('velChart'), {
+            type: 'bar',
+            data: {
+                labels: velData.ranges,
+                datasets: [{ data: velData.counts, backgroundColor: '#f06292' }]
+            },
+            options: baseOpts
+        });
     }
 
+    // ── Init ─────────────────────────────────────────────────────────────
     window.onload = () => {
         loadSummary();
         loadMapSpots();
         loadCharts();
+        loadDepartureTable();
         setTimeout(() => map.invalidateSize(), 500);
     };
 </script>
