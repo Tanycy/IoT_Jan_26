@@ -79,6 +79,13 @@
 
         .chart-box { flex: 1; position: relative; width: 100%; min-height: 0; }
         #map { height: 100%; width: 100%; border-radius: 4px; background: #0b1020; }
+        .map-legend {
+            position: absolute; bottom: 24px; left: 8px; z-index: 1000;
+            background: rgba(18,26,58,0.92); border: 1px solid #1c254f;
+            border-radius: 5px; padding: 6px 10px; font-size: 0.65rem; color: #e0e0e0;
+        }
+        .map-legend div { margin: 3px 0; display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
         .table-wrap { flex: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
@@ -122,10 +129,12 @@
         <div class="bottom-row-split">
             <div class="card">
                 <h3>Recorded Flight Paths (Perak)</h3>
-                <div id="map"></div>
+                <div id="map" style="position:relative;">
+
+                </div>
             </div>
             <div class="card">
-                <h3>Top 5 Aircraft Registration Country Distribution</h3>
+                <h3>Aircraft Registration Country Distribution</h3>
                 <div class="chart-box"><canvas id="countryChart"></canvas></div>
             </div>
         </div>
@@ -139,14 +148,17 @@
         </div>
 
         <div class="card">
-            <h3>Top 10 Departure Airports</h3>
-            <div id="depStatus">Loading airport data…</div>
+            <h3>Inferred Airport Locations</h3>
+            <div id="depStatus" style="font-size:0.6rem;color:#607d8b;margin-bottom:4px;">GPS inferred from collected flight trajectory data</div>
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>Airport</th>
-                            <th style="text-align:right;">Count</th>
+                            <th>Flight</th>
+                            <th>Type</th>
+                            <th>Inferred Airport</th>
+                            <th style="text-align:center;">GPS</th>
+
                         </tr>
                     </thead>
                     <tbody id="airportTable"></tbody>
@@ -188,6 +200,7 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
     async function loadMapSpots() {
+        // ── Flight path dots (cyan) ──
         const res    = await fetch('/api/map_data');
         const points = await res.json();
         points.forEach(p => {
@@ -196,6 +209,7 @@
             }).addTo(map);
         });
         if (points.length > 0) map.panTo([points[0].latitude, points[0].longitude]);
+
     }
 
     // ── KPI ──────────────────────────────────────────────────────────────
@@ -207,36 +221,35 @@
         document.getElementById('velVal').innerText   = data.average_velocity;
     }
 
-    // ── Departure Airport Table (now uses /api/departure_airports) ────────
+    // ── Inferred Airport Table ───────────────────────────────────────────
     async function loadDepartureTable() {
         try {
-            const res  = await fetch('/api/departure_airports');
+            const res  = await fetch('/api/inferred_airports');
             const data = await res.json();
 
-            const status = document.getElementById('depStatus');
-            const tbody  = document.getElementById('airportTable');
+            const tbody = document.getElementById('airportTable');
 
             if (!data || data.length === 0) {
-                status.textContent = "No route data yet — fetch routes first.";
-                tbody.innerHTML    = "";
+                tbody.innerHTML = '<tr><td colspan="4" style="color:#607d8b">No inferred data yet.</td></tr>';
                 return;
             }
 
-            // Check if we got real airport names or just country fallback
-            const hasIcao = data.some(d => d.icao && d.icao !== "");
-            status.textContent = hasIcao
-                ? `Showing ${data.length} departure airports`
-                : "Showing by origin country (no route data yet)";
-
-            tbody.innerHTML = data.map(d => `
+            tbody.innerHTML = data.map(d => {
+                const typeColor  = d.type === 'origin' ? '#ff9800' : '#e040fb';
+                const typeLabel  = d.type === 'origin' ? '🛫 Origin' : '🛬 Dest';
+                const airportDisplay = d.airport_name && d.airport_name !== 'Unknown'
+                    ? `<span style="color:#e0e0e0">${d.airport_name}</span>`
+                    : `<span style="color:#455a64">Unknown</span>`;
+                return `
                 <tr>
-                    <td>
-                        ${d.airport || "Unknown"}
-                        ${d.icao ? `<span class="icao-badge">${d.icao}</span>` : ""}
+                    <td style="font-family:monospace;color:#4fc3f7;white-space:nowrap">${d.flight_number}</td>
+                    <td style="color:${typeColor};white-space:nowrap">${typeLabel}</td>
+                    <td>${airportDisplay}</td>
+                    <td style="font-family:monospace;font-size:0.58rem;color:#ff9800;white-space:nowrap">
+                        ${d.est_lat}, ${d.est_lon}
                     </td>
-                    <td style="text-align:right;">${d.count}</td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
 
         } catch (e) {
             document.getElementById('depStatus').textContent = "Error loading data.";

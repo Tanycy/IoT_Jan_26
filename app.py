@@ -302,17 +302,22 @@ def fetch_real_departures():
 @app.route("/api/departure_airports")
 def departure_airports():
     """
-    Counts how many flight RECORDS (not unique routes) came from each
-    departure airport by joining flights table with flight_routes.
+    Counts flight records per departure airport and includes
+    inferred GPS coordinates from inferred_airports table.
     """
     try:
         df = query_db("""
             SELECT r.departure_airport,
                    r.departure_icao,
-                   COUNT(f.id) AS count
+                   COUNT(f.id) AS count,
+                   AVG(i.est_lat) AS inferred_lat,
+                   AVG(i.est_lon) AS inferred_lon
             FROM flights f
             INNER JOIN flight_routes r
                 ON f.flight_number = r.flight_number
+            LEFT JOIN inferred_airports i
+                ON f.flight_number = i.flight_number
+                AND i.type = 'origin'
             WHERE r.departure_airport IS NOT NULL
               AND r.departure_airport != 'Unknown'
             GROUP BY r.departure_icao, r.departure_airport
@@ -322,9 +327,11 @@ def departure_airports():
         if len(df) > 0:
             return jsonify([
                 {
-                    "airport": row["departure_airport"],
-                    "icao":    row["departure_icao"],
-                    "count":   int(row["count"])
+                    "airport":      row["departure_airport"],
+                    "icao":         row["departure_icao"],
+                    "count":        int(row["count"]),
+                    "inferred_lat": round(float(row["inferred_lat"]), 4) if row["inferred_lat"] == row["inferred_lat"] else None,
+                    "inferred_lon": round(float(row["inferred_lon"]), 4) if row["inferred_lon"] == row["inferred_lon"] else None
                 }
                 for _, row in df.iterrows()
             ])
@@ -344,6 +351,23 @@ def departure_airports():
         for _, row in df.iterrows()
     ])
 
+
+
+# ── Inferred airport locations ────────────────
+@app.route("/api/inferred_airports")
+def inferred_airports():
+    try:
+        df = query_db("""
+            SELECT flight_number, type, est_lat, est_lon,
+                   airport_name, airport_icao,
+                   last_alt, last_vel, confidence
+            FROM inferred_airports
+            WHERE confidence IN ('high', 'medium')
+            ORDER BY confidence DESC, type
+        """)
+        return jsonify(df.to_dict(orient="records"))
+    except Exception as e:
+        return jsonify([])
 
 # ─────────────────────────────────────────────
 # 6.  SCHEDULER + STARTUP
