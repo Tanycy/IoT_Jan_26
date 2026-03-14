@@ -27,7 +27,7 @@ This project implements a full IoT data pipeline:
 | **Country Distribution** | Donut chart of aircraft registration countries |
 | **Altitude Distribution** | Histogram of aircraft altitude ranges |
 | **Velocity Distribution** | Histogram of aircraft speed distribution |
-| **Inferred Airport Locations** | ⭐ Bonus — GPS coordinates of airports inferred from flight trajectory data |
+| **Inferred Airport Locations** |  GPS coordinates of airports inferred from flight trajectory data |
 
 ---
 
