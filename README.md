@@ -31,19 +31,6 @@ This project implements a full IoT data pipeline:
 
 ---
 
-## ⭐ Bonus Feature — Airport GPS Inference
-
-The system mathematically infers airport locations purely from collected IoT data — **no external airport database lookup required**.
-
-**How it works:**
-- When a flight is detected **climbing** (altitude increasing over multiple records), the trajectory is extrapolated **backwards** to ground level to estimate the **departure airport GPS**.
-- When a flight is detected **descending**, the trajectory is extrapolated **forwards** to estimate the **arrival airport GPS**.
-- The nearest known airport is matched to the inferred coordinates using Euclidean distance.
-
-This produces 221 inferred airport locations with high/medium confidence ratings, derived entirely from the raw telemetry collected by the RPi.
-
----
-
 ## 🧰 Technology Stack
 
 - **Python** — Core language
