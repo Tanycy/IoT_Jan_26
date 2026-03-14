@@ -48,7 +48,7 @@ This produces 221 inferred airport locations with high/medium confidence ratings
 
 - **Python** — Core language
 - **Flask** — Web framework and REST API
-- **Pandas / NumPy** — Data processing and analytics
+- **Pandas** — Data processing and analytics
 - **SQLite** — Local database (built into Python)
 - **OpenSky Network API** — Live aircraft telemetry source
 - **Leaflet.js** — Interactive map visualization
