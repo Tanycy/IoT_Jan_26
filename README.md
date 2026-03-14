@@ -126,7 +126,6 @@ IoT_Jan_26/
 
 ```
 flights              ← raw telemetry from OpenSky (icao24, callsign, lat, lon, alt, vel)
-flight_routes        ← departure/arrival airport lookup per flight number
 inferred_airports    ← GPS coordinates inferred from flight trajectory data
 ```
 
