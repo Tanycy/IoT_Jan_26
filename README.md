@@ -1,143 +1,139 @@
-# ✈️ Flight Data Analytics Dashboard
+# ✈️ Perak Flight Analytics Dashboard
 
-A web-based dashboard built with **Flask** that collects and analyzes flight data.
-The system retrieves flight information, stores it locally, and visualizes key analytics through an interactive dashboard.
+A real-time IoT data acquisition and analytics system that continuously monitors aircraft flying over **Perak, Malaysia**. Built with Flask, the dashboard visualizes historical flight telemetry collected from a Raspberry Pi over multiple days.
 
 ---
 
-# 📌 Project Overview
+## 📌 Project Overview
 
-This project demonstrates a simple **IoT-style data pipeline**:
+This project implements a full IoT data pipeline:
 
-1. Flight data is collected from an external API.
-2. The data is stored locally using SQLite.
-3. The Flask dashboard performs analysis using Pandas.
-4. Results are visualized through charts and tables.
+1. A **Raspberry Pi** polls the OpenSky Network API every few minutes, capturing live aircraft state vectors over Perak airspace.
+2. Flight telemetry is stored persistently in a **SQLite database**.
+3. A **Flask backend** performs analytics using Pandas and exposes REST API endpoints.
+4. An **interactive dashboard** visualizes all analytics through charts, maps, and tables.
+5. A **bonus feature** mathematically infers departure/arrival airport GPS coordinates directly from collected flight trajectory data.
 
 ---
 
 ## 📊 Dashboard Features
 
-The dashboard performs descriptive analytics on recorded flight data, including:
-
-* **Flights per Hour Analysis** – Visualizes hourly air traffic patterns to identify peak flight periods.
-* **Flights per Day Trend** – Shows daily flight activity to observe short-term traffic trends.
-* **Total Flight Statistics** – Displays total recorded flights along with average altitude and velocity.
-* **Aircraft Registration Country Distribution** – Shows the distribution of flights based on the aircraft registration country.
-* **Flights by Departure Country** – Lists detected flights grouped by their departure country.
-* **Altitude Distribution Analysis** – Displays aircraft altitude ranges using histogram visualization.
-* **Velocity Distribution Analysis** – Shows aircraft speed distribution to analyze flight behavior.
-* **Flight Path Visualization** – Maps recorded aircraft positions over the Perak region using geographic visualization.
-
----
-
-# 🧰 Technology Stack
-
-* Python
-* Flask
-* Pandas
-* Requests
-* SQLite
-* HTML / CSS / JavaScript
-* Render (Cloud Deployment)
-
-SQLite is built into Python, so no additional database installation is required.
+| Feature | Description |
+|---|---|
+| **Flights / Hour** | Hourly air traffic patterns to identify peak flight periods |
+| **Flights / Day** | Daily flight activity trend over the collection period |
+| **KPI Summary** | Total recorded flights, average altitude (m), average velocity (m/s) |
+| **Flight Path Map** | Geographic visualization of all recorded aircraft positions over Perak |
+| **Country Distribution** | Donut chart of aircraft registration countries |
+| **Altitude Distribution** | Histogram of aircraft altitude ranges |
+| **Velocity Distribution** | Histogram of aircraft speed distribution |
+| **Inferred Airport Locations** | ⭐ Bonus — GPS coordinates of airports inferred from flight trajectory data |
 
 ---
 
-# 🌐 Live Demo
+## ⭐ Bonus Feature — Airport GPS Inference
 
-The system has been deployed on **Render** and can be accessed online.
+The system mathematically infers airport locations purely from collected IoT data — **no external airport database lookup required**.
 
-🔗 **Live Dashboard Link:**
+**How it works:**
+- When a flight is detected **climbing** (altitude increasing over multiple records), the trajectory is extrapolated **backwards** to ground level to estimate the **departure airport GPS**.
+- When a flight is detected **descending**, the trajectory is extrapolated **forwards** to estimate the **arrival airport GPS**.
+- The nearest known airport is matched to the inferred coordinates using Euclidean distance.
 
-```
-https://iot-jan-26.onrender.com
-```
-
-Users can access the dashboard directly without installing any software.
+This produces 221 inferred airport locations with high/medium confidence ratings, derived entirely from the raw telemetry collected by the RPi.
 
 ---
 
-# 🚀 Local Setup (For Developers)
+## 🧰 Technology Stack
 
-If you want to run the project locally instead of using the deployed version:
+- **Python** — Core language
+- **Flask** — Web framework and REST API
+- **Pandas / NumPy** — Data processing and analytics
+- **SQLite** — Local database (built into Python)
+- **OpenSky Network API** — Live aircraft telemetry source
+- **Leaflet.js** — Interactive map visualization
+- **Chart.js** — Charts and graphs
+- **Render** — Cloud deployment
 
-## 1️⃣ Install Python
+---
 
-Download from:
-https://www.python.org/downloads/
+## 🌐 Live Demo
 
-Ensure **"Add Python to PATH"** is selected.
+Deployed on **Render** — accessible online without any installation.
 
-Verify installation:
+🔗 **Live Dashboard:** [https://iot-jan-26.onrender.com](https://iot-jan-26.onrender.com)
 
-```
+---
+
+## 🚀 Local Setup
+
+### 1. Install Python
+Download from [python.org](https://www.python.org/downloads/) — ensure **"Add Python to PATH"** is checked.
+
+```bash
 python --version
 ```
 
----
+### 2. Install Git
+Download from [git-scm.com](https://git-scm.com/downloads)
 
-## 2️⃣ Install Git
-
-Download from:
-https://git-scm.com/downloads
-
----
-
-## 3️⃣ Clone Repository
-
-```
+### 3. Clone Repository
+```bash
 git clone https://github.com/Tanycy/IoT_Jan_26.git
 cd IoT_Jan_26
 ```
 
----
-
-## 4️⃣ Install Dependencies
-
-```
-pip install flask pandas requests
+### 4. Install Dependencies
+```bash
+pip install -r requirements.txt
 ```
 
----
-
-## 5️⃣ Run The Server
-
+### 5. Run Inference (first time only)
+```bash
+python infer_airports.py
 ```
+
+### 6. Start the Server
+```bash
 python app.py
 ```
 
-Open the dashboard:
-
-```
-http://127.0.0.1:5000
-```
+Open: [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
 ---
 
-# 📂 Project Structure
+## 📂 Project Structure
 
 ```
 IoT_Jan_26/
 │
-├── app.py
-├── collect_data.py
-├── perak_flights.db
-├── requirements.txt
+├── app.py                 ← Flask server + REST API endpoints
+├── collect_data.py        ← RPi data collector (OpenSky API polling)
+├── infer_airports.py      ← Airport GPS inference from trajectory data
+├── airports.csv           ← Airport reference data (OurAirports)
+├── perak_flights.db       ← SQLite database with all collected data
+├── requirements.txt       ← Python dependencies
 │
 ├── templates/
-│   └── dashboard.html
+│   └── dashboard.html     ← Interactive dashboard UI
 │
 └── README.md
 ```
 
 ---
 
-# 🚫 Important Notes
+## 🗄️ Database Schema
 
-* Do NOT modify `perak_flights.db`
-* Do NOT upload large database files
-* Only **Python and Git** are required to run locally
+```
+flights              ← raw telemetry from OpenSky (icao24, callsign, lat, lon, alt, vel)
+flight_routes        ← departure/arrival airport lookup per flight number
+inferred_airports    ← GPS coordinates inferred from flight trajectory data
+```
 
-SQLite is already included with Python.
+---
+
+## ⚠️ Important Notes
+
+- Do **NOT** modify `perak_flights.db` — it contains all collected historical data
+- `airports.csv` is auto-downloaded on first run if missing
+- Only **Python** and **Git** are required to run locally — SQLite is built into Python
